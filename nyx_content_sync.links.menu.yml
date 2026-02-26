@@ -1,0 +1,6 @@
+nyx_content_sync.settings:
+  title: 'Nyx Content Sync'
+  route_name: nyx_content_sync.settings
+  parent: system.admin_config_services
+  description: 'Configurar sincronização de conteúdo com Nyx-Index-Hub'
+  weight: 10

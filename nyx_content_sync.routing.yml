@@ -1,0 +1,7 @@
+nyx_content_sync.settings:
+  path: '/admin/config/services/nyx-content-sync'
+  defaults:
+    _form: '\Drupal\nyx_content_sync\Form\SettingsForm'
+    _title: 'Nyx Content Sync Settings'
+  requirements:
+    _permission: 'administer site configuration'

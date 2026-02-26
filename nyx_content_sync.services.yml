@@ -1,0 +1,22 @@
+services:
+  nyx_content_sync.hub_client:
+    class: Drupal\nyx_content_sync\Service\HubClientService
+    arguments:
+      - '@http_client'
+      - '@logger.factory'
+      - '@config.factory'
+
+  nyx_content_sync.markdown_converter:
+    class: Drupal\nyx_content_sync\Service\MarkdownConverterService
+    arguments:
+      - '@entity_type.manager'
+      - '@renderer'
+
+  nyx_content_sync.sync_manager:
+    class: Drupal\nyx_content_sync\Service\SyncManagerService
+    arguments:
+      - '@nyx_content_sync.hub_client'
+      - '@nyx_content_sync.markdown_converter'
+      - '@config.factory'
+      - '@logger.factory'
+      - '@file_system'

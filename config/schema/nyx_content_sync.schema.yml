@@ -1,0 +1,23 @@
+nyx_content_sync.settings:
+  type: config_object
+  label: 'Nyx Content Sync Settings'
+  mapping:
+    hub_url:
+      type: string
+      label: 'Hub URL'
+    group_key:
+      type: string
+      label: 'Group Key'
+    content_type_mappings:
+      type: sequence
+      label: 'Content Type Mappings'
+      sequence:
+        type: mapping
+        label: 'Mapping'
+        mapping:
+          content_type:
+            type: string
+            label: 'Content Type'
+          store_name:
+            type: string
+            label: 'Store Name'

@@ -1,0 +1,17 @@
+{
+  "name": "bladellano/nyx_content_sync",
+  "description": "Nyx Content Sync Drupal module",
+  "type": "drupal-module",
+  "license": "proprietary",
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "require": {
+    "php": ">=8.1",
+    "drupal/core": "^10 || ^11"
+  },
+  "autoload": {
+    "psr-4": {
+      "Drupal\\nyx_content_sync\\": "src/"
+    }
+  }
+}

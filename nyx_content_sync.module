@@ -1,0 +1,61 @@
+<?php
+
+/**
+ * @file
+ * Módulo para sincronizar conteúdo com Nyx-Index-Hub.
+ */
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\node\NodeInterface;
+
+/**
+ * Implements hook_entity_insert().
+ */
+function nyx_content_sync_entity_insert(EntityInterface $entity) {
+  if ($entity instanceof NodeInterface) {
+    _nyx_content_sync_process_node($entity, 'insert');
+  }
+}
+
+/**
+ * Implements hook_entity_update().
+ */
+function nyx_content_sync_entity_update(EntityInterface $entity) {
+  if ($entity instanceof NodeInterface) {
+    _nyx_content_sync_process_node($entity, 'update');
+  }
+}
+
+/**
+ * Implements hook_entity_delete().
+ */
+function nyx_content_sync_entity_delete(EntityInterface $entity) {
+  if ($entity instanceof NodeInterface) {
+    _nyx_content_sync_process_node($entity, 'delete');
+  }
+}
+
+/**
+ * Processa node para sincronização.
+ */
+function _nyx_content_sync_process_node(NodeInterface $node, string $operation) {
+  $sync_manager = \Drupal::service('nyx_content_sync.sync_manager');
+
+  // Verifica se o tipo de conteúdo está configurado para sincronização
+  if ($sync_manager->isContentTypeEnabled($node->bundle())) {
+    try {
+      if ($operation === 'delete') {
+        $sync_manager->deleteContent($node);
+      }
+      else {
+        $sync_manager->syncContent($node);
+      }
+    }
+    catch (\Exception $e) {
+      \Drupal::logger('nyx_content_sync')->error(
+        'Erro ao sincronizar node @nid: @message',
+        ['@nid' => $node->id(), '@message' => $e->getMessage()]
+      );
+    }
+  }
+}

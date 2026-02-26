@@ -1,0 +1,7 @@
+name: 'Nyx Content Sync'
+type: module
+description: 'Sincroniza conteúdo Drupal com Nyx-Index-Hub para indexação no Gemini API'
+core_version_requirement: ^10 || ^11
+package: 'Nyx'
+dependencies:
+  - drupal:node
