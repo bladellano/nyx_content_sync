@@ -44,11 +44,29 @@ function _nyx_content_sync_process_node(NodeInterface $node, string $operation) 
   // Verifica se o tipo de conteúdo está configurado para sincronização
   if ($sync_manager->isContentTypeEnabled($node->bundle())) {
     try {
-      if ($operation === 'delete') {
-        $sync_manager->deleteContent($node);
+      // Verifica se modo assíncrono está habilitado
+      $config = \Drupal::config('nyx_content_sync.settings');
+      $async_mode = $config->get('async_mode') ?: FALSE;
+
+      if ($async_mode) {
+        // Modo assíncrono: adiciona na fila
+        $queue_manager = \Drupal::service('nyx_content_sync.queue_manager');
+
+        if ($operation === 'delete') {
+          $queue_manager->queueDelete($node);
+        }
+        else {
+          $queue_manager->queueSync($node);
+        }
       }
       else {
-        $sync_manager->syncContent($node);
+        // Modo síncrono: processa imediatamente
+        if ($operation === 'delete') {
+          $sync_manager->deleteContent($node);
+        }
+        else {
+          $sync_manager->syncContent($node);
+        }
       }
     }
     catch (\Exception $e) {

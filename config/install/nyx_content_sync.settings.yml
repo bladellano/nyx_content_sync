@@ -1,3 +1,4 @@
 hub_url: ''
 group_key: ''
+async_mode: false
 content_type_mappings: []

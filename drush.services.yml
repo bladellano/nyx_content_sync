@@ -1,0 +1,9 @@
+services:
+  nyx_content_sync.commands:
+    class: Drupal\nyx_content_sync\Commands\SyncQueueCommands
+    arguments:
+      - '@queue'
+      - '@plugin.manager.queue_worker'
+      - '@nyx_content_sync.queue_manager'
+    tags:
+      - { name: drush.command }

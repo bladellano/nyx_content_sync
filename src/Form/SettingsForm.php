@@ -55,6 +55,13 @@ class SettingsForm extends ConfigFormBase {
       '#placeholder' => 'c2e510ab-fe3f-45e7-a3de-cf3680562d83',
     ];
 
+    $form['connection']['async_mode'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Modo Assíncrono'),
+      '#default_value' => $config->get('async_mode') ?: FALSE,
+      '#description' => $this->t('Quando habilitado, a sincronização é processada em background via fila. Recomendado para evitar timeouts em sites com muito conteúdo. A fila é processada pelo cron.'),
+    ];
+
     $form['mappings'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('Mapeamento de Tipos de Conteúdo'),
@@ -178,6 +185,7 @@ class SettingsForm extends ConfigFormBase {
     // Salva configurações de conexão
     $config->set('hub_url', $form_state->getValue('hub_url'));
     $config->set('group_key', $form_state->getValue('group_key'));
+    $config->set('async_mode', $form_state->getValue('async_mode'));
 
     // Processa mapeamentos
     $mappings = [];

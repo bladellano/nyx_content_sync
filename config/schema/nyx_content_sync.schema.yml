@@ -8,6 +8,9 @@ nyx_content_sync.settings:
     group_key:
       type: string
       label: 'Group Key'
+    async_mode:
+      type: boolean
+      label: 'Async Mode'
     content_type_mappings:
       type: sequence
       label: 'Content Type Mappings'

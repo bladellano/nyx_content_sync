@@ -20,3 +20,9 @@ services:
       - '@config.factory'
       - '@logger.factory'
       - '@file_system'
+
+  nyx_content_sync.queue_manager:
+    class: Drupal\nyx_content_sync\Service\QueueManagerService
+    arguments:
+      - '@queue'
+      - '@logger.factory'
