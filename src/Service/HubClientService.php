@@ -63,6 +63,7 @@ class HubClientService {
       $url = rtrim($hub_url, '/') . '/api/nyx-sync/validate-store';
 
       $response = $this->httpClient->request('POST', $url, [
+        'auth' => $this->getAuthCredentials(),
         'json' => [
           'group_key' => $group_key,
           'store_name' => $store_name,
@@ -110,6 +111,7 @@ class HubClientService {
       $url = rtrim($hub_url, '/') . '/api/nyx-sync/upload';
 
       $response = $this->httpClient->request('POST', $url, [
+        'auth' => $this->getAuthCredentials(),
         'json' => [
           'group_key' => $group_key,
           'store_name' => $store_name,
@@ -163,6 +165,7 @@ class HubClientService {
       $url = rtrim($hub_url, '/') . '/api/nyx-sync/delete';
 
       $response = $this->httpClient->request('POST', $url, [
+        'auth' => $this->getAuthCredentials(),
         'json' => [
           'group_key' => $group_key,
           'store_name' => $store_name,
@@ -199,6 +202,19 @@ class HubClientService {
     // Fallback para configuração
     $config = $this->configFactory->get('nyx_content_sync.settings');
     return $config->get('hub_url') ?: '';
+  }
+
+  /**
+   * Obtém credenciais de autenticação Basic Auth.
+   *
+   * @return array
+   *   Array com [username, password].
+   */
+  protected function getAuthCredentials(): array {
+    $username = getenv('NYX_API_USERNAME') ?: 'api_sync';
+    $password = getenv('NYX_API_PASSWORD') ?: '';
+
+    return [$username, $password];
   }
 
 }
