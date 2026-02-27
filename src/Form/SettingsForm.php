@@ -147,14 +147,15 @@ class SettingsForm extends ConfigFormBase {
       return;
     }
 
-    // Testa validação com um store fictício
-    $hub_client = \Drupal::service('nyx_content_sync.hub_client');
-
     try {
       $url = rtrim($hub_url, '/') . '/api/nyx-sync/validate-store';
       $http_client = \Drupal::httpClient();
 
       $response = $http_client->request('POST', $url, [
+        'auth' => [
+          getenv('NYX_API_USERNAME') ?: 'api_sync',
+          getenv('NYX_API_PASSWORD') ?: '',
+        ],
         'json' => [
           'group_key' => $group_key,
           'store_name' => 'test',
