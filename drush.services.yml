@@ -5,5 +5,7 @@ services:
       - '@queue'
       - '@plugin.manager.queue_worker'
       - '@nyx_content_sync.queue_manager'
+      - '@nyx_content_sync.sync_manager'
+      - '@entity_type.manager'
     tags:
       - { name: drush.command }

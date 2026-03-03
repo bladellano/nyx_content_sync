@@ -6,6 +6,8 @@ use Drupal\Core\Queue\QueueFactory;
 use Drupal\Core\Queue\QueueWorkerManagerInterface;
 use Drupal\Core\Queue\SuspendQueueException;
 use Drupal\nyx_content_sync\Service\QueueManagerService;
+use Drupal\nyx_content_sync\Service\SyncManagerService;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drush\Commands\DrushCommands;
 
 /**
@@ -35,17 +37,35 @@ class SyncQueueCommands extends DrushCommands {
   protected $queueManager;
 
   /**
+   * Sync manager service.
+   *
+   * @var \Drupal\nyx_content_sync\Service\SyncManagerService
+   */
+  protected $syncManager;
+
+  /**
+   * Entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
+
+  /**
    * Construtor.
    */
   public function __construct(
     QueueFactory $queue_factory,
     QueueWorkerManagerInterface $queue_worker_manager,
-    QueueManagerService $queue_manager
+    QueueManagerService $queue_manager,
+    SyncManagerService $sync_manager,
+    EntityTypeManagerInterface $entity_type_manager
   ) {
     parent::__construct();
     $this->queueFactory = $queue_factory;
     $this->queueWorkerManager = $queue_worker_manager;
     $this->queueManager = $queue_manager;
+    $this->syncManager = $sync_manager;
+    $this->entityTypeManager = $entity_type_manager;
   }
 
   /**
@@ -137,6 +157,133 @@ class SyncQueueCommands extends DrushCommands {
         $this->logger()->error('Erro ao limpar fila');
       }
     }
+  }
+
+  /**
+   * Sincroniza todos os nodes publicados de um tipo de conteúdo.
+   *
+   * @command nyx:sync-all
+   * @aliases nyx-sync-bulk
+   * @param string $content_type Tipo de conteúdo (opcional, sincroniza todos os configurados se omitido)
+   * @option limit Número máximo de nodes a sincronizar
+   * @option batch-size Tamanho do lote (pausa entre lotes para não sobrecarregar)
+   * @usage nyx:sync-all
+   *   Sincroniza todos os tipos de conteúdo configurados.
+   * @usage nyx:sync-all faq
+   *   Sincroniza todos os FAQs publicados.
+   * @usage nyx:sync-all faq --limit=50
+   *   Sincroniza até 50 FAQs publicados.
+   * @usage nyx:sync-all faq --batch-size=20
+   *   Sincroniza FAQs em lotes de 20 (pausa de 2s entre lotes).
+   */
+  public function syncAll($content_type = NULL, $options = ['limit' => 0, 'batch-size' => 50]) {
+    $limit = (int) $options['limit'];
+    $batch_size = (int) $options['batch-size'];
+
+    // Se tipo específico não foi informado, sincroniza todos os configurados
+    if (empty($content_type)) {
+      $mappings = $this->syncManager->getContentTypeMappings();
+      if (empty($mappings)) {
+        $this->logger()->error('Nenhum tipo de conteúdo configurado para sincronização');
+        return;
+      }
+
+      $this->output()->writeln("Sincronizando " . count($mappings) . " tipos de conteúdo configurados...\n");
+
+      foreach ($mappings as $type => $store) {
+        $this->syncContentType($type, $limit, $batch_size);
+        $this->output()->writeln("");
+      }
+
+      $this->logger()->success('Sincronização bulk completa!');
+      return;
+    }
+
+    // Sincroniza tipo específico
+    if (!$this->syncManager->isContentTypeEnabled($content_type)) {
+      $this->logger()->error("Tipo de conteúdo '{$content_type}' não está configurado para sincronização");
+      return;
+    }
+
+    $this->syncContentType($content_type, $limit, $batch_size);
+    $this->logger()->success('Sincronização completa!');
+  }
+
+  /**
+   * Sincroniza todos os nodes de um tipo de conteúdo.
+   */
+  protected function syncContentType(string $content_type, int $limit, int $batch_size): void {
+    $this->output()->writeln("<info>Sincronizando tipo: {$content_type}</info>");
+
+    // Busca nodes publicados
+    $query = $this->entityTypeManager->getStorage('node')->getQuery()
+      ->condition('type', $content_type)
+      ->condition('status', 1)
+      ->accessCheck(FALSE)
+      ->sort('created', 'ASC');
+
+    if ($limit > 0) {
+      $query->range(0, $limit);
+    }
+
+    $nids = $query->execute();
+    $total = count($nids);
+
+    if ($total === 0) {
+      $this->output()->writeln("  Nenhum node publicado encontrado");
+      return;
+    }
+
+    $this->output()->writeln("  Total de nodes: {$total}");
+
+    $success = 0;
+    $errors = 0;
+    $processed = 0;
+
+    // Processa em lotes
+    $chunks = array_chunk($nids, $batch_size);
+
+    foreach ($chunks as $chunk_index => $chunk) {
+      $nodes = $this->entityTypeManager->getStorage('node')->loadMultiple($chunk);
+
+      foreach ($nodes as $node) {
+        // Verifica se é NodeInterface
+        if (!$node instanceof \Drupal\node\NodeInterface) {
+          continue;
+        }
+
+        $processed++;
+
+        try {
+          if ($this->syncManager->syncContent($node)) {
+            $success++;
+            $this->output()->write(".");
+          }
+          else {
+            $errors++;
+            $this->output()->write("E");
+          }
+        }
+        catch (\Exception $e) {
+          $errors++;
+          $this->output()->write("E");
+          $this->logger()->warning("Erro node {$node->id()}: {$e->getMessage()}");
+        }
+
+        // Progress a cada 10 nodes
+        if ($processed % 10 === 0) {
+          $this->output()->write(" [{$processed}/{$total}]");
+        }
+      }
+
+      // Pausa entre lotes para não sobrecarregar (exceto no último)
+      if ($chunk_index < count($chunks) - 1) {
+        sleep(2);
+      }
+    }
+
+    $this->output()->writeln("");
+    $this->output()->writeln("  <info>✓ Sucesso: {$success} | ✗ Erros: {$errors}</info>");
   }
 
 }

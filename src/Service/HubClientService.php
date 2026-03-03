@@ -106,40 +106,13 @@ class HubClientService {
     string $markdown_content,
     array $metadata = []
   ): bool {
-    try {
-      $hub_url = $this->getHubUrl();
-      $url = rtrim($hub_url, '/') . '/api/nyx-sync/upload';
-
-      $response = $this->httpClient->request('POST', $url, [
-        'auth' => $this->getAuthCredentials(),
-        'json' => [
-          'group_key' => $group_key,
-          'store_name' => $store_name,
-          'content_id' => $content_id,
-          'markdown' => $markdown_content,
-          'metadata' => $metadata,
-        ],
-        'timeout' => 30,
-      ]);
-
-      $status_code = $response->getStatusCode();
-      if ($status_code === 200 || $status_code === 201) {
-        $this->logger->info('Conteúdo @id enviado para @store', [
-          '@id' => $content_id,
-          '@store' => $store_name,
-        ]);
-        return TRUE;
-      }
-
-      return FALSE;
-    }
-    catch (RequestException $e) {
-      $this->logger->error('Erro ao enviar conteúdo @id: @message', [
-        '@id' => $content_id,
-        '@message' => $e->getMessage(),
-      ]);
-      return FALSE;
-    }
+    return $this->sendRequest('/api/nyx-sync/upload', [
+      'group_key' => $group_key,
+      'store_name' => $store_name,
+      'content_id' => $content_id,
+      'markdown' => $markdown_content,
+      'metadata' => $metadata,
+    ], 30);
   }
 
   /**
@@ -160,61 +133,43 @@ class HubClientService {
     string $store_name,
     string $content_id
   ): bool {
+    return $this->sendRequest('/api/nyx-sync/delete', [
+      'group_key' => $group_key,
+      'store_name' => $store_name,
+      'content_id' => $content_id,
+    ], 10);
+  }
+
+  /**
+   * Envia requisição para o Hub.
+   */
+  private function sendRequest(string $endpoint, array $data, int $timeout = 10): bool {
     try {
-      $hub_url = $this->getHubUrl();
-      $url = rtrim($hub_url, '/') . '/api/nyx-sync/delete';
-
-      $response = $this->httpClient->request('POST', $url, [
+      $response = $this->httpClient->request('POST', rtrim($this->getHubUrl(), '/') . $endpoint, [
         'auth' => $this->getAuthCredentials(),
-        'json' => [
-          'group_key' => $group_key,
-          'store_name' => $store_name,
-          'content_id' => $content_id,
-        ],
-        'timeout' => 10,
+        'json' => $data,
+        'timeout' => $timeout,
       ]);
-
-      $status_code = $response->getStatusCode();
-      return ($status_code === 200 || $status_code === 204);
+      return in_array($response->getStatusCode(), [200, 201, 204]);
     }
     catch (RequestException $e) {
-      $this->logger->error('Erro ao deletar conteúdo @id: @message', [
-        '@id' => $content_id,
-        '@message' => $e->getMessage(),
-      ]);
+      $this->logger->error('Erro em @endpoint: @msg', ['@endpoint' => $endpoint, '@msg' => $e->getMessage()]);
       return FALSE;
     }
   }
 
   /**
-   * Obtém URL do Hub das configurações ou variável de ambiente.
-   *
-   * @return string
-   *   URL do Hub.
+   * Obtém URL do Hub (prioritiza variável de ambiente).
    */
   protected function getHubUrl(): string {
-    // Prioriza variável de ambiente
-    $env_url = getenv('NYX_HUB_URL');
-    if ($env_url) {
-      return $env_url;
-    }
-
-    // Fallback para configuração
-    $config = $this->configFactory->get('nyx_content_sync.settings');
-    return $config->get('hub_url') ?: '';
+    return getenv('NYX_HUB_URL') ?: $this->configFactory->get('nyx_content_sync.settings')->get('hub_url') ?: '';
   }
 
   /**
-   * Obtém credenciais de autenticação Basic Auth.
-   *
-   * @return array
-   *   Array com [username, password].
+   * Obtém credenciais Basic Auth.
    */
   protected function getAuthCredentials(): array {
-    $username = getenv('NYX_API_USERNAME') ?: 'api_sync';
-    $password = getenv('NYX_API_PASSWORD') ?: '';
-
-    return [$username, $password];
+    return [getenv('NYX_API_USERNAME') ?: 'api_sync', getenv('NYX_API_PASSWORD') ?: ''];
   }
 
 }
