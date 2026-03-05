@@ -36,6 +36,40 @@ function nyx_content_sync_entity_delete(EntityInterface $entity) {
 }
 
 /**
+ * Implements hook_cron().
+ */
+function nyx_content_sync_cron() {
+  $queue_factory = \Drupal::service('queue');
+  $queue_worker_manager = \Drupal::service('plugin.manager.queue_worker');
+  
+  $queue_name = 'nyx_content_sync_queue';
+  $queue = $queue_factory->get($queue_name);
+  $queue_worker = $queue_worker_manager->createInstance($queue_name);
+  
+  $items_to_process = 10;
+  $processed = 0;
+  
+  while ($processed < $items_to_process && ($item = $queue->claimItem())) {
+    try {
+      $queue_worker->processItem($item->data);
+      $queue->deleteItem($item);
+      $processed++;
+    }
+    catch (\Exception $e) {
+      \Drupal::logger('nyx_content_sync')->error(
+        'Erro ao processar item da fila: @message',
+        ['@message' => $e->getMessage()]
+      );
+      $queue->deleteItem($item);
+    }
+  }
+  
+  if ($processed > 0) {
+    \Drupal::logger('nyx_content_sync')->info('Cron processou @count itens da fila', ['@count' => $processed]);
+  }
+}
+
+/**
  * Processa node para sincronização.
  */
 function _nyx_content_sync_process_node(NodeInterface $node, string $operation) {

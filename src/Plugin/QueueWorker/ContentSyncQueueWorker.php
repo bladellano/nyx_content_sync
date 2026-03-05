@@ -14,8 +14,7 @@ use Psr\Log\LoggerInterface;
  *
  * @QueueWorker(
  *   id = "nyx_content_sync_queue",
- *   title = @Translation("Nyx Content Sync Queue Worker"),
- *   cron = {"time" = 60}
+ *   title = @Translation("Nyx Content Sync Queue Worker")
  * )
  */
 class ContentSyncQueueWorker extends QueueWorkerBase implements ContainerFactoryPluginInterface {
