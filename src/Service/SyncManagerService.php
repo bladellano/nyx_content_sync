@@ -20,7 +20,14 @@ class SyncManagerService {
   protected $hubClient;
 
   /**
-   * Markdown converter service.
+   * Node serializer service.
+   *
+   * @var \Drupal\nyx_content_sync\Service\NodeSerializerService
+   */
+  protected $nodeSerializer;
+
+  /**
+   * Markdown converter service (deprecated - mantido para compatibilidade).
    *
    * @var \Drupal\nyx_content_sync\Service\MarkdownConverterService
    */
@@ -52,12 +59,14 @@ class SyncManagerService {
    */
   public function __construct(
     HubClientService $hub_client,
+    NodeSerializerService $node_serializer,
     MarkdownConverterService $markdown_converter,
     ConfigFactoryInterface $config_factory,
     LoggerChannelFactoryInterface $logger_factory,
     FileSystemInterface $file_system
   ) {
     $this->hubClient = $hub_client;
+    $this->nodeSerializer = $node_serializer;
     $this->markdownConverter = $markdown_converter;
     $this->configFactory = $config_factory;
     $this->logger = $logger_factory->get('nyx_content_sync');
@@ -104,19 +113,16 @@ class SyncManagerService {
       return FALSE;
     }
 
-    // Converte node para Markdown
-    $markdown = $this->markdownConverter->convertToMarkdown($node);
+    // Serializa node para JSON
+    $node_data = $this->nodeSerializer->serializeNode($node);
 
-    // Valida markdown não vazio
-    if (empty(trim($markdown))) {
-      $this->logger->warning('Node @id gerou markdown vazio', ['@id' => $node->id()]);
+    // Valida dados não vazios
+    if (empty($node_data)) {
+      $this->logger->warning('Node @id gerou dados vazios', ['@id' => $node->id()]);
       return FALSE;
     }
 
     $content_id = $this->generateContentId($node);
-
-    // Salva arquivo localmente (opcional, para debug)
-    $this->saveMarkdownFile($content_id, $markdown);
 
     // Metadados
     $metadata = [
@@ -127,12 +133,12 @@ class SyncManagerService {
       'changed' => $node->getChangedTime(),
     ];
 
-    // Envia para o Hub
+    // Envia para o Hub (agora envia node_data em vez de markdown)
     return $this->hubClient->uploadContent(
       $config['group_key'],
       $config['store_name'],
       $content_id,
-      $markdown,
+      [$node_data],
       $metadata
     );
   }

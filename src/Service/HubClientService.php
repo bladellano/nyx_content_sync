@@ -83,7 +83,7 @@ class HubClientService {
   }
 
   /**
-   * Envia arquivo Markdown para o Hub.
+   * Envia dados de nodes para o Hub.
    *
    * @param string $group_key
    *   Group Key do projeto.
@@ -91,8 +91,8 @@ class HubClientService {
    *   Store name de destino.
    * @param string $content_id
    *   ID único do conteúdo.
-   * @param string $markdown_content
-   *   Conteúdo em Markdown.
+   * @param array $nodes_data
+   *   Array de dados de nodes serializados.
    * @param array $metadata
    *   Metadados adicionais.
    *
@@ -103,14 +103,14 @@ class HubClientService {
     string $group_key,
     string $store_name,
     string $content_id,
-    string $markdown_content,
+    array $nodes_data,
     array $metadata = []
   ): bool {
     return $this->sendRequest('/api/nyx-sync/upload', [
       'group_key' => $group_key,
       'store_name' => $store_name,
       'content_id' => $content_id,
-      'markdown' => $markdown_content,
+      'nodes' => $nodes_data,
       'metadata' => $metadata,
     ], 30);
   }
